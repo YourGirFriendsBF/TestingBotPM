@@ -106,9 +106,9 @@ def get_progress_bar_string(status):
     p = 0 if total == 0 else round(completed * 100 / total)
     p = min(max(p, 0), 100)
     cFull = p // 8
-    p_str = '⬤' * cFull
+    p_str = '▰' * cFull
     max_size = 100 // 8
-    p_str += '○' * (max_size - cFull)
+    p_str += '▱' * (max_size - cFull)
     p_str = f"[{p_str}]"
     return p_str
 
@@ -141,7 +141,7 @@ def get_readable_message():
                 elif download.status() == MirrorStatus.STATUS_UPLOADING:
                     msg += f"\n<b>UPLOADED: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
                 else:
-                    msg += f"\n<b>DOWNLOADED: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                    msg += f"\n<b>ᴅᴏᴡɴʟᴏᴀᴅᴇᴅ: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
                 msg += f"\n<b>sᴘᴇᴇᴅ: </b> {download.speed()} | <b>ETA:</b> {download.eta()}"
                 msg += f"\n<b>ᴛɪᴍᴇ ᴇʟᴀᴘsᴇᴅ: </b>{get_readable_time(time() - download.message.date.timestamp())}"
                 try:
