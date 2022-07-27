@@ -124,7 +124,7 @@ def get_readable_message():
                 globals()['PAGE_NO'] -= 1
         msg += "<b>______ᴘᴏᴡᴇʀᴇᴅ ʙʏ______</b>\n"
         msg += "<b>@DhruvMirrorUpdates</b>\n"
-        msg += "\n━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += "━━━━━━━━━━━━━━━━━━━━━\n"
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
             msg += f"\n<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
             
@@ -163,7 +163,7 @@ def get_readable_message():
                 else:
                     msg += f'\n<b>ᴜsᴇʀ :</b> ️<code>{download.message.from_user.first_name}</code> | <b>Id:</b> <code>{download.message.from_user.id}</code>'
                 msg += f"\n<b>ᴛᴏ sᴛᴏᴘ : </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>\n"
-                msg += "\n━━━━━━━━━━━━━━━━━━━━━━\n"
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
             elif download.status() == MirrorStatus.STATUS_SEEDING:
                 msg += f"\n<b>sɪᴢᴇ : </b>{download.size()}"
                 msg += f"\n<b>sᴘᴇᴇᴅ : </b>{get_readable_file_size(download.torrent_info().upspeed)}/s"
