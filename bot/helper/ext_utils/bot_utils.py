@@ -124,9 +124,9 @@ def get_readable_message():
                 globals()['PAGE_NO'] -= 1
         msg += "<b>______ᴘᴏᴡᴇʀᴇᴅ ʙʏ______</b>\n"
         msg += "<b>@DhruvMirrorUpdates</b>\n"
-        msg += "\n━━━━━━━━━━━━━━━━━━━━━"
+        msg += "━━━━━━━━━━━━━━━━━━━━━"
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
-            msg += f"<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
+            msg += f"\n<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
             
             msg += f"\n<b>sᴛᴀᴛᴜs:</b> <i>{download.status()}</i>"
             if download.status() not in [
