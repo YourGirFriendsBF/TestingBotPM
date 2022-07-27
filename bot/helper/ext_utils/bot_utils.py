@@ -126,7 +126,7 @@ def get_readable_message():
         msg += "<b>@DhruvMirrorUpdates</b>\n"
         msg += "\n━━━━━━━━━━━━━━━━━━━━━"
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
-            msg += f"\n<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
+            msg += f"<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
             
             msg += f"\n<b>sᴛᴀᴛᴜs:</b> <i>{download.status()}</i>"
             if download.status() not in [
