@@ -162,7 +162,7 @@ def get_readable_message():
                         pass
                 else:
                     msg += f'\n<b>ᴜsᴇʀ :</b> ️<code>{download.message.from_user.first_name}</code> | <b>Id:</b> <code>{download.message.from_user.id}</code>'
-                msg += f"\n<b>ᴛᴏ sᴛᴏᴘ : </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>\n"
+                msg += f"\n<b>ᴛᴏ sᴛᴏᴘ : </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>"
                 msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
             elif download.status() == MirrorStatus.STATUS_SEEDING:
                 msg += f"<b>sɪᴢᴇ : </b>{download.size()}"
