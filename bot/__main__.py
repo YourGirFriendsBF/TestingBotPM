@@ -182,10 +182,6 @@ sudo_help_string = f'''<br><br><b> Sudo/Owner Only Commands </b><br><br>
 <b>/{BotCommands.ShellCommand}</b>: Run commands in Shell (Only Owner)
 <br><br>
 <b>/{BotCommands.ExecHelpCommand}</b>: Get help for Executor module (Only Owner)
-<br><br>
-<b>/{BotCommands.AddleechlogCommand}</b>: Add Leech Log
-<br><br>
-<b>/{BotCommands.RmleechlogCommand}</b>: Remove Leech Log
 '''
 help_string = f'''
 Hei, Need Help!!
