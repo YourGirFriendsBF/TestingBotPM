@@ -230,7 +230,6 @@ def get_readable_message():
                 msg += f" | <b>Time: </b>{get_readable_time(download.torrent_info().seeding_time)}"
             else:
                 msg += f"\n<b>Size: </b>{download.size()}"
-                msg += f"\n<b>Engine :</b> {download.eng()}"
             msg += f"\n<b>To Cancel: </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>"
             msg += "\n"
             if STATUS_LIMIT is not None and index == STATUS_LIMIT:
@@ -375,7 +374,7 @@ ONE, TWO, THREE = range(3)
 
 def refresh(update, context):
     query = update.callback_query
-    query.edit_message_text(text="Refreshing Status...⏳")
+    query.edit_message_text(text="Hey {user.name } Please Wait while I'm Refreshing Status...⏳")
     sleep(5)
     update_all_messages()
 
