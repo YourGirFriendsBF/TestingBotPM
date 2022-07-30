@@ -106,7 +106,7 @@ def getAllDownload(req_status: str):
     return None
 
 def get_progress_bar_string(status):
-   completed = status.processed_bytes() / 8
+    completed = status.processed_bytes() / 8
     total = status.size_raw() / 8
     p = 0 if total == 0 else round(completed * 100 / total)
     p = min(max(p, 0), 100)
