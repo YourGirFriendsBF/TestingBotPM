@@ -194,7 +194,6 @@ def get_readable_message():
             if PAGE_NO > pages and pages != 0:
                 globals()['COUNT'] -= STATUS_LIMIT
                 globals()['PAGE_NO'] -= 1
-
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
             msg += f"\n\n<b>File Name:</b> <code>{escape(str(download.name()))}</code>"
             msg += f"\n<b>Status:</b> <i>{download.status()}</i>"
@@ -217,7 +216,7 @@ def get_readable_message():
                 msg += f"\n<b>Speed:</b> {download.speed()}\n<b>Waiting Time:</b> {download.eta()}"
                 msg += f"\n<b>Elapsed : </b>{get_readable_time(time() - download.message.date.timestamp())}"
                 msg += f'\n<b>Req By :</b> <a href="https://t.me/c/{str(download.message.chat.id)[4:]}/{download.message.message_id}">{download.message.from_user.first_name}</a>'
-   
+                msg += f"\n<b>Engine :</b> {download.eng()}"
                 try:
                     msg += f"\n<b>Seeders:</b> {download.aria_download().num_seeders}" \
                            f" | <b>Peers:</b> {download.aria_download().connections}"
@@ -231,12 +230,14 @@ def get_readable_message():
 
             elif download.status() == MirrorStatus.STATUS_SEEDING:
                 msg += f"\n<b>Size: </b>{download.size()}"
+                msg += f"\n<b>Engine:</b> <code>qBittorrent v4.4.2</code>"
                 msg += f"\n<b>Speed: </b>{get_readable_file_size(download.torrent_info().upspeed)}/s"
                 msg += f" | <b>Uploaded: </b>{get_readable_file_size(download.torrent_info().uploaded)}"
                 msg += f"\n<b>Ratio: </b>{round(download.torrent_info().ratio, 3)}"
                 msg += f" | <b>Time: </b>{get_readable_time(download.torrent_info().seeding_time)}"
             else:
                 msg += f"\n<b>Size: </b>{download.size()}"
+                msg += f"\n<b>Engine :</b> {download.eng()}"
             msg += f"\n<b>To Cancel: </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>"
             msg += "\n"
             if STATUS_LIMIT is not None and index == STATUS_LIMIT:
@@ -260,9 +261,8 @@ def get_readable_message():
                     upspeed_bytes += float(spd.split('K')[0]) * 1024
                 elif 'MB/s' in spd:
                     upspeed_bytes += float(spd.split('M')[0]) * 1048576
-        bmsg += f"\n<b>🔻DL:</b> {get_readable_file_size(dlspeed_bytes)}/s | <b>🔺UL:</b> {get_readable_file_size(upspeed_bytes)}/s"
-        if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
-            msg += f"<b>Page:</b> {PAGE_NO}/{pages} | <b>Tasks:</b> {tasks}\n"
+        bmsg += f"\n<b>DN:</b> {get_readable_file_size(dlspeed_bytes)}/s<b> | UP:</b> {get_readable_file_size(upspeed_bytes)}/s"
+
         buttons = ButtonMaker()
         buttons.sbutton("Refresh", str(ONE))
         buttons.sbutton("Close", str(TWO))
@@ -378,23 +378,8 @@ def get_content_type(link: str) -> str:
             content_type = None
     return content_type
 
-ONE, TWO, THREE, FOUR = range(4)
+ONE, TWO, THREE = range(3)
 
-def deleteMessage(bot, message: Message):
-    try:
-        bot.deleteMessage(chat_id=message.chat.id,
-                           message_id=message.message_id)
-    except Exception as e:
-        LOGGER.error(str(e))
-
-def delete_all_messages():
-    with status_reply_dict_lock:
-        for message in list(status_reply_dict.values()):
-            try:
-                deleteMessage(bot, message)
-                del status_reply_dict[message.chat.id]
-            except Exception as e:
-                LOGGER.error(str(e))
 def refresh(update, context):
     query = update.callback_query
     query.edit_message_text(text="Refreshing Status...⏳")
@@ -414,52 +399,35 @@ def close(update, context):
         delete_all_messages()
     else:
         query.answer(text="Sorry, only Admins can close !", show_alert=True)
+
 def pop_up_stats(update, context):
     query = update.callback_query
     stats = bot_sys_stats()
     query.answer(text=stats, show_alert=True)
+
 def bot_sys_stats():
     currentTime = get_readable_time(time() - botStartTime)
-    cpu = cpu_percent(interval=0.5)
-    memory = virtual_memory()
-    mem_p = memory.percent
-    total, used, free, disk = disk_usage('/')
+    cpu = psutil.cpu_percent()
+    mem = psutil.virtual_memory().percent
+    disk = psutil.disk_usage("/").percent
+    total, used, free = shutil.disk_usage(".")
     total = get_readable_file_size(total)
     used = get_readable_file_size(used)
     free = get_readable_file_size(free)
-    sent = get_readable_file_size(net_io_counters().bytes_sent)
-    recv = get_readable_file_size(net_io_counters().bytes_recv)
-    num_active = 0
-    num_upload = 0
-    num_split = 0
-    num_extract = 0
-    num_archi = 0
-    tasks = len(download_dict)
-    for stats in list(download_dict.values()):
-       if stats.status() == MirrorStatus.STATUS_DOWNLOADING:
-                num_active += 1
-       if stats.status() == MirrorStatus.STATUS_UPLOADING:
-                num_upload += 1
-       if stats.status() == MirrorStatus.STATUS_ARCHIVING:
-                num_archi += 1
-       if stats.status() == MirrorStatus.STATUS_EXTRACTING:
-                num_extract += 1
-       if stats.status() == MirrorStatus.STATUS_SPLITTING:
-                num_split += 1
-    stats = f"""
-BOT UPTIME: {currentTime}\n
-CPU : {cpu}% || RAM : {mem_p}%\n
-USED : {used} || FREE :{free}
-SENT : {sent} || RECV : {recv}\n
-ONGOING TASKS:
-DL: {num_active} || UP : {num_upload} || SPLIT : {num_split}
-ZIP : {num_archi} || UNZIP : {num_extract} || TOTAL : {tasks} 
-Hope You Like the Service! ❤️
+    recv = get_readable_file_size(psutil.net_io_counters().bytes_recv)
+    sent = get_readable_file_size(psutil.net_io_counters().bytes_sent)
+    stats = "Bot Statistics"
+    stats += f"""
+Bot Uptime: {currentTime}
+T-DN: {recv} | T-UP: {sent}
+CPU: {cpu}% | RAM: {mem}%
+Disk: {total} | Free: {free}
+Used: {used} [{disk}%]
+Hope You Like the Service
 """
     return stats
-dispatcher.add_handler(
-    CallbackQueryHandler(pop_up_stats, pattern="^" + str(FOUR) + "$")
-)
-dispatcher.add_handler(
-    CallbackQueryHandler(close, pattern="^" + str(TWO) + "$")
-)
+
+dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
+
