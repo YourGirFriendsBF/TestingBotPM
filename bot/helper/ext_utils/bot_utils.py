@@ -3,19 +3,15 @@ from threading import Thread, Event
 from time import time
 from math import ceil
 from html import escape
-from psutil import disk_usage, cpu_percent, swap_memory, cpu_count, virtual_memory, net_io_counters, boot_time
 from requests import head as rhead
 from urllib.request import urlopen
-from telegram.message import Message
-from telegram import InlineKeyboardMarkup
-from bot.helper.telegram_helper.message_utils import delete_all_messages, update_all_messages
-from telegram.ext import CallbackQueryHandler
-from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot import download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
 import shutil
 import psutil
+from psutil import virtual_memory, cpu_percent, disk_usage
+from telegram import InlineKeyboardMarkup
 from telegram.error import RetryAfter
 from telegram.ext import CallbackQueryHandler
 from telegram.message import Message
