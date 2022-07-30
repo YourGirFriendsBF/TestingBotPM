@@ -8,6 +8,7 @@ from requests import head as rhead
 from urllib.request import urlopen
 from telegram.message import Message
 from telegram import InlineKeyboardMarkup
+from bot.helper.telegram_helper.message_utils import delete_all_messages, update_all_messages
 from telegram.ext import CallbackQueryHandler
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot import bot, download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR, dispatcher, OWNER_ID, status_reply_dict, status_reply_dict_lock, LOGGER
