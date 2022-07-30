@@ -112,6 +112,53 @@ def get_progress_bar_string(status):
     p_str = f"[{p_str}]"
     return p_str
 
+def editMessage(text: str, message: Message, reply_markup=None):	
+    try:	
+        bot.editMessageText(text=text, message_id=message.message_id,	
+                              chat_id=message.chat.id,reply_markup=reply_markup,	
+                              parse_mode='HTMl', disable_web_page_preview=True)	
+    except RetryAfter as r:	
+        LOGGER.warning(str(r))	
+        sleep(r.retry_after * 1.5)	
+        return editMessage(text, message, reply_markup)	
+    except Exception as e:	
+        LOGGER.error(str(e))	
+        return str(e)	
+def deleteMessage(bot, message: Message):	
+    try:	
+        bot.deleteMessage(chat_id=message.chat.id,	
+                           message_id=message.message_id)	
+    except Exception as e:	
+        LOGGER.error(str(e))	
+def delete_all_messages():	
+    with status_reply_dict_lock:	
+        for data in list(status_reply_dict.values()):	
+            try:	
+                deleteMessage(bot, data[0])	
+                del status_reply_dict[data[0].chat.id]	
+            except Exception as e:	
+                LOGGER.error(str(e))	
+def update_all_messages(force=False):	
+    with status_reply_dict_lock:	
+        if not force and (not status_reply_dict or not Interval or time() - list(status_reply_dict.values())[0][1] < 3):	
+            return	
+        for chat_id in status_reply_dict:	
+            status_reply_dict[chat_id][1] = time()	
+    msg, buttons = get_readable_message()	
+    if msg is None:	
+        return	
+    with status_reply_dict_lock:	
+        for chat_id in status_reply_dict:	
+            if status_reply_dict[chat_id] and msg != status_reply_dict[chat_id][0].text:	
+                if buttons == "":	
+                    rmsg = editMessage(msg, status_reply_dict[chat_id][0])	
+                else:	
+                    rmsg = editMessage(msg, status_reply_dict[chat_id][0], buttons)	
+                if rmsg == "Message to edit not found":	
+                    del status_reply_dict[chat_id]	
+                    return	
+                status_reply_dict[chat_id][0].text = msg	
+                status_reply_dict[chat_id][1] = time()
 def get_readable_message():
     with download_dict_lock:
         msg = ""
@@ -124,59 +171,58 @@ def get_readable_message():
                 globals()['PAGE_NO'] -= 1
         msg += "<b>______ᴘᴏᴡᴇʀᴇᴅ ʙʏ______</b>\n"
         msg += "<b>@DhruvMirrorUpdates</b>\n\n"
-        msg += "━━━━━━━━━━━━━━━━━━━━━\n"
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
-            msg += f"<b>ɴᴀᴍᴇ: </b> <code>{escape(str(download.name()))}</code>"
-            
-            msg += f"\n<b>sᴛᴀᴛᴜs:</b> <i>{download.status()}</i>"
-            if download.status() not in [
-                MirrorStatus.STATUS_ARCHIVING,
-                MirrorStatus.STATUS_EXTRACTING,
-                MirrorStatus.STATUS_SPLITTING,
-                MirrorStatus.STATUS_SEEDING,
-            ]:
-                msg += f"\n{get_progress_bar_string(download)} {download.progress()}"
-                if download.status() == MirrorStatus.STATUS_CLONING:
-                    msg += f"\n<b>CLONED: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+            msg += f"\n\n<b>File Name:</b> <code>{escape(str(download.name()))}</code>"
+            msg += f"\n<b>Status:</b> <i>{download.status()}</i>"
+            if download.status() not in [MirrorStatus.STATUS_SEEDING]:
+                msg += f"\n{get_progress_bar_string(download)}\n<b>Progress:</b> {download.progress()}"
+                if download.status() in [MirrorStatus.STATUS_DOWNLOADING,
+                                         MirrorStatus.STATUS_WAITING,
+                                         MirrorStatus.STATUS_PAUSE]:
+                    msg += f"\n<b>Downloaded:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
                 elif download.status() == MirrorStatus.STATUS_UPLOADING:
-                    msg += f"\n<b>UPLOADED: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
-                else:
-                    msg += f"\n<b>ᴅᴏᴡɴʟᴏᴀᴅᴇᴅ: </b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
-                msg += f"\n<b>sᴘᴇᴇᴅ: </b> {download.speed()} | <b>ETA:</b> {download.eta()}"
-                msg += f"\n<b>ᴛɪᴍᴇ ᴇʟᴀᴘsᴇᴅ: </b>{get_readable_time(time() - download.message.date.timestamp())}"
+                    msg += f"\n<b>Uploaded:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                elif download.status() == MirrorStatus.STATUS_CLONING:
+                    msg += f"\n<b>Cloned:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                elif download.status() == MirrorStatus.STATUS_ARCHIVING:
+                    msg += f"\n<b>Archived:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                elif download.status() == MirrorStatus.STATUS_EXTRACTING:
+                    msg += f"\n<b>Extracted:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                elif download.status() == MirrorStatus.STATUS_SPLITTING:
+                    msg += f"\n<b>Splitted:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
+                msg += f"\n<b>Speed:</b> {download.speed()}\n<b>Waiting Time:</b> {download.eta()}"
+                msg += f"\n<b>Elapsed : </b>{get_readable_time(time() - download.message.date.timestamp())}"
+                msg += f'\n<b>Req By :</b> <a href="https://t.me/c/{str(download.message.chat.id)[4:]}/{download.message.message_id}">{download.message.from_user.first_name}</a>'
+                msg += f"\n<b>Engine :</b> {download.eng()}"
                 try:
-                    msg += f"\n<b>sᴇᴇᴅᴇʀs: </b> {download.aria_download().num_seeders}" \
-                           f" | <b>ᴘᴇᴇʀs: </b> {download.aria_download().connections}"
+                    msg += f"\n<b>Seeders:</b> {download.aria_download().num_seeders}" \
+                           f" | <b>Peers:</b> {download.aria_download().connections}"
                 except:
                     pass
                 try:
-                    msg += f"\n<b>sᴇᴇᴅᴇʀs: </b> {download.torrent_info().num_seeds}" \
-                           f" | <b>ʟᴇᴇᴄʜᴇʀs: </b> {download.torrent_info().num_leechs}"
+                    msg += f"\n<b>Seeders:</b> {download.torrent_info().num_seeds}" \
+                           f" | <b>Leechers:</b> {download.torrent_info().num_leechs}"
                 except:
                     pass
-                if download.message.chat.type != 'private':
-                    try:
-                        chatid = str(download.message.chat.id)[4:]
-                        msg += f'\n<b>sᴏᴜʀᴄᴇ: </b><a href="https://t.me/c/{chatid}/{download.message.message_id}">{download.message.from_user.first_name}</a> | <b>Id :</b> <code>{download.message.from_user.id}</code>'
-                    except:
-                        pass
-                else:
-                    msg += f'\n<b>ᴜsᴇʀ :</b> ️<code>{download.message.from_user.first_name}</code> | <b>Id:</b> <code>{download.message.from_user.id}</code>'
-                msg += f"\n<b>ᴛᴏ sᴛᴏᴘ : </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>"
-                msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
+
             elif download.status() == MirrorStatus.STATUS_SEEDING:
-                msg += f"<b>sɪᴢᴇ : </b>{download.size()}"
-                msg += f"\n<b>sᴘᴇᴇᴅ : </b>{get_readable_file_size(download.torrent_info().upspeed)}/s"
-                msg += f" | <b>ᴜᴘʟᴏᴀᴅᴇᴅ : </b>{get_readable_file_size(download.torrent_info().uploaded)}"
-                msg += f"\n<b>ʀᴀᴛɪᴏ : </b>{round(download.torrent_info().ratio, 3)}"
-                msg += f" | <b>ᴛɪᴍᴇ : </b>{get_readable_time(download.torrent_info().seeding_time)}"
-                msg += f"\n<code>/{BotCommands.CancelMirror} {download.gid()}</code>"
+                msg += f"\n<b>Size: </b>{download.size()}"
+                msg += f"\n<b>Speed: </b>{get_readable_file_size(download.torrent_info().upspeed)}/s"
+                msg += f" | <b>Uploaded: </b>{get_readable_file_size(download.torrent_info().uploaded)}"
+                msg += f"\n<b>Ratio: </b>{round(download.torrent_info().ratio, 3)}"
+                msg += f" | <b>Time: </b>{get_readable_time(download.torrent_info().seeding_time)}"
             else:
-                msg += f"\n<b>sɪᴢᴇ: </b>{download.size()}"
-            msg += "\n\n"
+                msg += f"\n<b>Size: </b>{download.size()}"
+                msg += f"\n<b>Engine :</b> {download.eng()}"
+            msg += f"\n<b>To Cancel: </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>"
+            msg += "\n"
             if STATUS_LIMIT is not None and index == STATUS_LIMIT:
                 break
-        bmsg = f"<b>UPTIME:</b> {get_readable_time(time() - botStartTime)} | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
+        if len(msg) == 0:
+            return None, None
+        bmsg = f"\n<b>_____________________________________</b>"
+        bmsg += f"\n<b>Disk:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
+        bmsg += f"<b> | UPTM:</b> {get_readable_time(time() - botStartTime)}"
         dlspeed_bytes = 0
         upspeed_bytes = 0
         for download in list(download_dict.values()):
@@ -195,17 +241,21 @@ def get_readable_message():
         if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
             msg += f"<b>Page:</b> {PAGE_NO}/{pages} | <b>Tasks:</b> {tasks}\n"
         buttons = ButtonMaker()
+        buttons.sbutton("Refresh", str(ONE))
         buttons.sbutton("Close", str(TWO))
-        buttons.sbutton("Statistics", str(FOUR))
+        buttons.sbutton("Statistics", str(THREE))
         sbutton = InlineKeyboardMarkup(buttons.build_menu(2))
+
         if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
+            msg += f"\n<b>Total Tasks:</b> {tasks}\n"
             buttons = ButtonMaker()
-            buttons.sbutton("Previous", "status pre")
+            buttons.sbutton("Prev", "status pre")
             buttons.sbutton(f"{PAGE_NO}/{pages}", str(THREE))
             buttons.sbutton("Next", "status nex")
+            buttons.sbutton("Refresh", str(ONE))
             buttons.sbutton("Close", str(TWO))
-            buttons.sbutton("Statistics", str(FOUR))
             button = InlineKeyboardMarkup(buttons.build_menu(3))
+
             return msg + bmsg, button
         return msg + bmsg, sbutton
 
@@ -322,20 +372,25 @@ def delete_all_messages():
                 del status_reply_dict[message.chat.id]
             except Exception as e:
                 LOGGER.error(str(e))
+def refresh(update, context):
+    query = update.callback_query
+    query.edit_message_text(text="Refreshing Status...⏳")
+    sleep(5)
+    update_all_messages()
 
 def close(update, context):
     chat_id = update.effective_chat.id
     user_id = update.callback_query.from_user.id
     bot = context.bot
     query = update.callback_query
-    is_admin = bot.get_chat_member(chat_id, user_id).status in [
+    admins = bot.get_chat_member(chat_id, user_id).status in [
         "creator",
         "administrator",
     ] or user_id in [OWNER_ID]
-    if is_admin:
+    if admins:
         delete_all_messages()
     else:
-        query.answer(text="Hahahaha, You Are Not An Admin!", show_alert=True)
+        query.answer(text="Sorry, only Admins can close !", show_alert=True)
 def pop_up_stats(update, context):
     query = update.callback_query
     stats = bot_sys_stats()
@@ -376,6 +431,7 @@ SENT : {sent} || RECV : {recv}\n
 ONGOING TASKS:
 DL: {num_active} || UP : {num_upload} || SPLIT : {num_split}
 ZIP : {num_archi} || UNZIP : {num_extract} || TOTAL : {tasks} 
+Hope You Like the Service! ❤️
 """
     return stats
 dispatcher.add_handler(
