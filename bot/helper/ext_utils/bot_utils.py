@@ -11,8 +11,18 @@ from telegram import InlineKeyboardMarkup
 from bot.helper.telegram_helper.message_utils import delete_all_messages, update_all_messages
 from telegram.ext import CallbackQueryHandler
 from bot.helper.telegram_helper.bot_commands import BotCommands
-from bot import bot, download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR, dispatcher, OWNER_ID, status_reply_dict, status_reply_dict_lock, LOGGER
+from bot import download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR
+from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
+import shutil
+import psutil
+from telegram.error import RetryAfter
+from telegram.ext import CallbackQueryHandler
+from telegram.message import Message
+from telegram.update import Update
+from bot import *
+
+
 
 MAGNET_REGEX = r"magnet:\?xt=urn:btih:[a-zA-Z0-9]*"
 
@@ -85,19 +95,25 @@ def getDownloadByGid(gid):
 def getAllDownload(req_status: str):
     with download_dict_lock:
         for dl in list(download_dict.values()):
-            status = dl.status()
-            if status not in [MirrorStatus.STATUS_ARCHIVING, MirrorStatus.STATUS_EXTRACTING, MirrorStatus.STATUS_SPLITTING] and dl:
-                if req_status == 'down' and (status not in [MirrorStatus.STATUS_SEEDING,
-                                                            MirrorStatus.STATUS_UPLOADING,
-                                                            MirrorStatus.STATUS_CLONING]):
+            if dl:
+                status = dl.status()
+                if req_status == 'all':
                     return dl
-                elif req_status == 'up' and status == MirrorStatus.STATUS_UPLOADING:
+                if req_status == 'down' and status in [MirrorStatus.STATUS_DOWNLOADING,
+                                                         MirrorStatus.STATUS_WAITING,
+                                                         MirrorStatus.STATUS_PAUSE]:
                     return dl
-                elif req_status == 'clone' and status == MirrorStatus.STATUS_CLONING:
+                if req_status == 'up' and status == MirrorStatus.STATUS_UPLOADING:
                     return dl
-                elif req_status == 'seed' and status == MirrorStatus.STATUS_SEEDING:
+                if req_status == 'clone' and status == MirrorStatus.STATUS_CLONING:
                     return dl
-                elif req_status == 'all':
+                if req_status == 'seed' and status == MirrorStatus.STATUS_SEEDING:
+                    return dl
+                if req_status == 'split' and status == MirrorStatus.STATUS_SPLITTING:
+                    return dl
+                if req_status == 'extract' and status == MirrorStatus.STATUS_EXTRACTING:
+                    return dl
+                if req_status == 'archive' and status == MirrorStatus.STATUS_ARCHIVING:
                     return dl
     return None
 
@@ -131,6 +147,7 @@ def deleteMessage(bot, message: Message):
                            message_id=message.message_id)	
     except Exception as e:	
         LOGGER.error(str(e))	
+
 def delete_all_messages():	
     with status_reply_dict_lock:	
         for data in list(status_reply_dict.values()):	
@@ -170,8 +187,7 @@ def get_readable_message():
             if PAGE_NO > pages and pages != 0:
                 globals()['COUNT'] -= STATUS_LIMIT
                 globals()['PAGE_NO'] -= 1
-        msg += "<b>______ᴘᴏᴡᴇʀᴇᴅ ʙʏ______</b>\n"
-        msg += "<b>@DhruvMirrorUpdates</b>\n\n"
+
         for index, download in enumerate(list(download_dict.values())[COUNT:], start=1):
             msg += f"\n\n<b>File Name:</b> <code>{escape(str(download.name()))}</code>"
             msg += f"\n<b>Status:</b> <i>{download.status()}</i>"
