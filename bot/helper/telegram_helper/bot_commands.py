@@ -22,7 +22,7 @@ class _BotCommands:
         self.StatsCommand = f'stats{CMD_INDEX}'
         self.HelpCommand = f'help{CMD_INDEX}'
         self.LogCommand = f'log{CMD_INDEX}'
-        self.CloneCommand = f'clone{CMD_INDEX}'
+        self.CloneCommand = f'clone11'
         self.CountCommand = f'count{CMD_INDEX}'
         self.WatchCommand = f'watch11'
         self.ZipWatchCommand = f'zipwatch11'
