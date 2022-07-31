@@ -4,7 +4,7 @@ from bot import CMD_INDEX
 class _BotCommands:
     def __init__(self):
         self.StartCommand = 'start'
-        self.MirrorCommand = f'mirror'
+        self.MirrorCommand = f'mirror11'
         self.UnzipMirrorCommand = f'unzipmirror11'
         self.ZipMirrorCommand = f'zipmirror11'
         self.CancelMirror = f'cancel{CMD_INDEX}'
