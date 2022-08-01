@@ -256,21 +256,32 @@ def get_readable_message():
         bmsg += f"\n<b>DN:</b> {get_readable_file_size(dlspeed_bytes)}/s<b> | UP:</b> {get_readable_file_size(upspeed_bytes)}/s"
 
         buttons = ButtonMaker()
+
         buttons.sbutton("Refresh", str(ONE))
+
         buttons.sbutton("Close", str(TWO))
+
         buttons.sbutton("Statistics", str(THREE))
+
         sbutton = InlineKeyboardMarkup(buttons.build_menu(2))
 
         if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
-            msg += f"\n<b>Total Tasks:</b> {tasks}\n"
-            buttons = ButtonMaker()
-            buttons.sbutton("Prev", "status pre")
-            buttons.sbutton(f"{PAGE_NO}/{pages}", str(THREE))
-            buttons.sbutton("Next", "status nex")
-            buttons.sbutton("Refresh", str(ONE))
-            buttons.sbutton("Close", str(TWO))
-            button = InlineKeyboardMarkup(buttons.build_menu(3))
 
+            msg += f"\n<b>Total Tasks:</b> {tasks}\n"
+
+            buttons = ButtonMaker()
+
+            buttons.sbutton("Prev", "status pre")
+
+            buttons.sbutton(f"{PAGE_NO}/{pages}", str(THREE))
+
+            buttons.sbutton("Next", "status nex")
+
+            buttons.sbutton("Refresh", str(ONE))
+
+            buttons.sbutton("Close", str(TWO))
+
+            button = InlineKeyboardMarkup(buttons.build_menu(3))
             return msg + bmsg, button
         return msg + bmsg, sbutton
 
