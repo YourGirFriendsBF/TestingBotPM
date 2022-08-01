@@ -5,7 +5,7 @@ from math import ceil
 from html import escape
 from requests import head as rhead
 from urllib.request import urlopen
-from bot import download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR
+from bot import bot, download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR, dispatcher, OWNER_ID, status_reply_dict, status_reply_dict_lock, LOGGER 
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
 import shutil
@@ -76,32 +76,34 @@ def getDownloadByGid(gid):
     with download_dict_lock:
         for dl in list(download_dict.values()):
             status = dl.status()
-            if dl.gid() == gid:
+            if (
+                status
+                not in [
+                    MirrorStatus.STATUS_ARCHIVING,
+                    MirrorStatus.STATUS_EXTRACTING,
+                    MirrorStatus.STATUS_SPLITTING,
+                ]
+                and dl.gid() == gid
+            ):
                 return dl
     return None
 
 def getAllDownload(req_status: str):
     with download_dict_lock:
         for dl in list(download_dict.values()):
-            if dl:
-                status = dl.status()
-                if req_status == 'all':
+            status = dl.status()
+            if status not in [MirrorStatus.STATUS_ARCHIVING, MirrorStatus.STATUS_EXTRACTING, MirrorStatus.STATUS_SPLITTING] and dl:
+                if req_status == 'down' and (status not in [MirrorStatus.STATUS_SEEDING,
+                                                            MirrorStatus.STATUS_UPLOADING,
+                                                            MirrorStatus.STATUS_CLONING]):
                     return dl
-                if req_status == 'down' and status in [MirrorStatus.STATUS_DOWNLOADING,
-                                                         MirrorStatus.STATUS_WAITING,
-                                                         MirrorStatus.STATUS_PAUSE]:
+                elif req_status == 'up' and status == MirrorStatus.STATUS_UPLOADING:
                     return dl
-                if req_status == 'up' and status == MirrorStatus.STATUS_UPLOADING:
+                elif req_status == 'clone' and status == MirrorStatus.STATUS_CLONING:
                     return dl
-                if req_status == 'clone' and status == MirrorStatus.STATUS_CLONING:
+                elif req_status == 'seed' and status == MirrorStatus.STATUS_SEEDING:
                     return dl
-                if req_status == 'seed' and status == MirrorStatus.STATUS_SEEDING:
-                    return dl
-                if req_status == 'split' and status == MirrorStatus.STATUS_SPLITTING:
-                    return dl
-                if req_status == 'extract' and status == MirrorStatus.STATUS_EXTRACTING:
-                    return dl
-                if req_status == 'archive' and status == MirrorStatus.STATUS_ARCHIVING:
+                elif req_status == 'all':
                     return dl
     return None
 
@@ -117,67 +119,6 @@ def get_progress_bar_string(status):
     p_str = f"[{p_str}]"
     return p_str
 
-def auto_delete_message(bot, cmd_message: Message, bot_message: Message):
-    if AUTO_DELETE_MESSAGE_DURATION != -1:
-        sleep(AUTO_DELETE_MESSAGE_DURATION)
-        try:
-            # Skip if None is passed meaning we don't want to delete bot xor cmd message
-            deleteMessage(bot, cmd_message)
-            deleteMessage(bot, bot_message)
-        except AttributeError:
-            pass
-
-def editMessage(text: str, message: Message, reply_markup=None):
-    try:
-        bot.editMessageText(text=text, message_id=message.message_id,
-                              chat_id=message.chat.id,reply_markup=reply_markup,
-                              parse_mode='HTMl', disable_web_page_preview=True)
-    except RetryAfter as r:
-        LOGGER.warning(str(r))
-        sleep(r.retry_after * 1.5)
-        return editMessage(text, message, reply_markup)
-    except Exception as e:
-        LOGGER.error(str(e))
-        return str(e)
-
-def deleteMessage(bot, message: Message):
-    try:
-        bot.deleteMessage(chat_id=message.chat.id,
-                           message_id=message.message_id)
-    except Exception as e:
-        LOGGER.error(str(e))
-
-def delete_all_messages():
-    with status_reply_dict_lock:
-        for data in list(status_reply_dict.values()):
-            try:
-                deleteMessage(bot, data[0])
-                del status_reply_dict[data[0].chat.id]
-            except Exception as e:
-                LOGGER.error(str(e))
-
-def update_all_messages(force=False):
-    with status_reply_dict_lock:
-        if not force and (not status_reply_dict or not Interval or time() - list(status_reply_dict.values())[0][1] < 3):
-            return
-        for chat_id in status_reply_dict:
-            status_reply_dict[chat_id][1] = time()
-
-    msg, buttons = get_readable_message()
-    if msg is None:
-        return
-    with status_reply_dict_lock:
-        for chat_id in status_reply_dict:
-            if status_reply_dict[chat_id] and msg != status_reply_dict[chat_id][0].text:
-                if buttons == "":
-                    rmsg = editMessage(msg, status_reply_dict[chat_id][0])
-                else:
-                    rmsg = editMessage(msg, status_reply_dict[chat_id][0], buttons)
-                if rmsg == "Message to edit not found":
-                    del status_reply_dict[chat_id]
-                    return
-                status_reply_dict[chat_id][0].text = msg
-                status_reply_dict[chat_id][1] = time()
 def get_readable_message():
     with download_dict_lock:
         msg = ""
@@ -371,7 +312,67 @@ def get_content_type(link: str) -> str:
     return content_type
 
 ONE, TWO, THREE = range(3)
+def auto_delete_message(bot, cmd_message: Message, bot_message: Message):
+    if AUTO_DELETE_MESSAGE_DURATION != -1:
+        sleep(AUTO_DELETE_MESSAGE_DURATION)
+        try:
+            # Skip if None is passed meaning we don't want to delete bot xor cmd message
+            deleteMessage(bot, cmd_message)
+            deleteMessage(bot, bot_message)
+        except AttributeError:
+            pass
 
+def editMessage(text: str, message: Message, reply_markup=None):
+    try:
+        bot.editMessageText(text=text, message_id=message.message_id,
+                              chat_id=message.chat.id,reply_markup=reply_markup,
+                              parse_mode='HTMl', disable_web_page_preview=True)
+    except RetryAfter as r:
+        LOGGER.warning(str(r))
+        sleep(r.retry_after * 1.5)
+        return editMessage(text, message, reply_markup)
+    except Exception as e:
+        LOGGER.error(str(e))
+        return str(e)
+
+def deleteMessage(bot, message: Message):
+    try:
+        bot.deleteMessage(chat_id=message.chat.id,
+                           message_id=message.message_id)
+    except Exception as e:
+        LOGGER.error(str(e))
+
+def delete_all_messages():
+    with status_reply_dict_lock:
+        for data in list(status_reply_dict.values()):
+            try:
+                deleteMessage(bot, data[0])
+                del status_reply_dict[data[0].chat.id]
+            except Exception as e:
+                LOGGER.error(str(e))
+
+def update_all_messages(force=False):
+    with status_reply_dict_lock:
+        if not force and (not status_reply_dict or not Interval or time() - list(status_reply_dict.values())[0][1] < 3):
+            return
+        for chat_id in status_reply_dict:
+            status_reply_dict[chat_id][1] = time()
+
+    msg, buttons = get_readable_message()
+    if msg is None:
+        return
+    with status_reply_dict_lock:
+        for chat_id in status_reply_dict:
+            if status_reply_dict[chat_id] and msg != status_reply_dict[chat_id][0].text:
+                if buttons == "":
+                    rmsg = editMessage(msg, status_reply_dict[chat_id][0])
+                else:
+                    rmsg = editMessage(msg, status_reply_dict[chat_id][0], buttons)
+                if rmsg == "Message to edit not found":
+                    del status_reply_dict[chat_id]
+                    return
+                status_reply_dict[chat_id][0].text = msg
+                status_reply_dict[chat_id][1] = time()
 def refresh(update, context):
     query = update.callback_query
     query.edit_message_text(text="Hey, Please Wait while I'm Refreshing Your Status...⏳")
