@@ -384,53 +384,94 @@ def get_content_type(link: str) -> str:
 ONE, TWO, THREE = range(3)
 
 def refresh(update, context):
+
     query = update.callback_query
-    query.edit_message_text(text="Hey {mention.from.first.name} , Please Wait while I'm Refreshing Status...⏳")
+
+    query.edit_message_text(text="Refreshing Status...⏳")
+
     sleep(5)
+
     update_all_messages()
 
 def close(update, context):
+
     chat_id = update.effective_chat.id
+
     user_id = update.callback_query.from_user.id
+
     bot = context.bot
+
     query = update.callback_query
+
     admins = bot.get_chat_member(chat_id, user_id).status in [
+
         "creator",
+
         "administrator",
+
     ] or user_id in [OWNER_ID]
+
     if admins:
+
         delete_all_messages()
+
     else:
+
         query.answer(text="Sorry, only Admins can close !", show_alert=True)
 
 def pop_up_stats(update, context):
+
     query = update.callback_query
+
     stats = bot_sys_stats()
+
     query.answer(text=stats, show_alert=True)
 
 def bot_sys_stats():
+
     currentTime = get_readable_time(time() - botStartTime)
+
     cpu = psutil.cpu_percent()
+
     mem = psutil.virtual_memory().percent
+
     disk = psutil.disk_usage("/").percent
+
     total, used, free = shutil.disk_usage(".")
+
     total = get_readable_file_size(total)
+
     used = get_readable_file_size(used)
+
     free = get_readable_file_size(free)
+
     recv = get_readable_file_size(psutil.net_io_counters().bytes_recv)
+
     sent = get_readable_file_size(psutil.net_io_counters().bytes_sent)
+
     stats = "Bot Statistics"
+
     stats += f"""
+
 Bot Uptime: {currentTime}
+
 T-DN: {recv} | T-UP: {sent}
+
 CPU: {cpu}% | RAM: {mem}%
+
 Disk: {total} | Free: {free}
+
 Used: {used} [{disk}%]
-Hope You Like the Service
+
+Made with ❤️ by Dawn
+
 """
+
     return stats
 
 dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
 
+dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
+
+dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
+    
