@@ -385,7 +385,7 @@ def get_content_type(link: str) -> str:
             content_type = None
     return content_type
 
-ONE, TWO, THREE = range(3)
+ONE, TWO, THREE, FOUR = range(4)
 
 def refresh(update, context):
     query = update.callback_query
@@ -436,6 +436,6 @@ Made with ❤️ by Dawn
 """
     return stats
 
-dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(TWO) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(THREE) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(FOUR) + "$"))
