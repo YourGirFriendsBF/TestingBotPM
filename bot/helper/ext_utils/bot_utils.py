@@ -436,6 +436,6 @@ Made with ❤️ by Dawn
 """
     return stats
 
-dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(TWO) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(THREE) + "$"))
-dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(FOUR) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
