@@ -5,8 +5,8 @@ from math import ceil
 from html import escape
 from requests import head as rhead
 from urllib.request import urlopen
-from bot import download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR
-from bot.helper.telegram_helper.bot_commands import BotCommands
+from telegram.message import Message
+from bot import bot, download_dict, download_dict_lock, STATUS_LIMIT, botStartTime, DOWNLOAD_DIR, dispatcher, OWNER_ID, status_reply_dict, status_reply_dict_lock, LOGGERfrom bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
 import shutil
 import psutil
@@ -239,51 +239,70 @@ def get_readable_message():
         bmsg = f"\n<b>_____________________________________</b>"
         bmsg += f"\n<b>Disk:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
         bmsg += f"<b> | UPTM:</b> {get_readable_time(time() - botStartTime)}"
+        
+        if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
         dlspeed_bytes = 0
+
         upspeed_bytes = 0
+
         for download in list(download_dict.values()):
+
             spd = download.speed()
+
             if download.status() == MirrorStatus.STATUS_DOWNLOADING:
+
                 if 'K' in spd:
+
                     dlspeed_bytes += float(spd.split('K')[0]) * 1024
+
                 elif 'M' in spd:
+
                     dlspeed_bytes += float(spd.split('M')[0]) * 1048576
+
             elif download.status() == MirrorStatus.STATUS_UPLOADING:
+
                 if 'KB/s' in spd:
+
                     upspeed_bytes += float(spd.split('K')[0]) * 1024
+
                 elif 'MB/s' in spd:
+
                     upspeed_bytes += float(spd.split('M')[0]) * 1048576
-        bmsg += f"\n<b>DN:</b> {get_readable_file_size(dlspeed_bytes)}/s<b> | UP:</b> {get_readable_file_size(upspeed_bytes)}/s"
+
+        bmsg += f"\n<b>DL:</b> {get_readable_file_size(dlspeed_bytes)}/s | <b>UL:</b> {get_readable_file_size(upspeed_bytes)}/s"
+
+        if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
+
+            msg += f"<b>Page:</b> {PAGE_NO}/{pages} | <b>Tasks:</b> {tasks}\n"
 
         buttons = ButtonMaker()
 
-        buttons.sbutton("Refresh", str(ONE))
-
         buttons.sbutton("Close", str(TWO))
 
-        buttons.sbutton("Statistics", str(THREE))
+        buttons.sbutton("Statistics", str(FOUR))
 
         sbutton = InlineKeyboardMarkup(buttons.build_menu(2))
 
         if STATUS_LIMIT is not None and tasks > STATUS_LIMIT:
 
-            msg += f"\n<b>Total Tasks:</b> {tasks}\n"
-
             buttons = ButtonMaker()
 
-            buttons.sbutton("Prev", "status pre")
+            buttons.sbutton("Previous", "status pre")
 
             buttons.sbutton(f"{PAGE_NO}/{pages}", str(THREE))
 
             buttons.sbutton("Next", "status nex")
 
-            buttons.sbutton("Refresh", str(ONE))
-
             buttons.sbutton("Close", str(TWO))
 
+            buttons.sbutton("Statistics", str(FOUR))
+
             button = InlineKeyboardMarkup(buttons.build_menu(3))
+
             return msg + bmsg, button
+
         return msg + bmsg, sbutton
+            
 
 def turn(data):
     try:
@@ -380,18 +399,35 @@ def get_content_type(link: str) -> str:
         except:
             content_type = None
     return content_type
+ONE, TWO, THREE, FOUR = range(4)
 
-ONE, TWO, THREE = range(3)
+def deleteMessage(bot, message: Message):
 
-def refresh(update, context):
+    try:
 
-    query = update.callback_query
+        bot.deleteMessage(chat_id=message.chat.id,
 
-    query.edit_message_text(text="Refreshing Status...⏳")
+                           message_id=message.message_id)
 
-    sleep(5)
+    except Exception as e:
 
-    update_all_messages()
+        LOGGER.error(str(e))
+
+def delete_all_messages():
+
+    with status_reply_dict_lock:
+
+        for message in list(status_reply_dict.values()):
+
+            try:
+
+                deleteMessage(bot, message)
+
+                del status_reply_dict[message.chat.id]
+
+            except Exception as e:
+
+                LOGGER.error(str(e))
 
 def close(update, context):
 
@@ -403,7 +439,7 @@ def close(update, context):
 
     query = update.callback_query
 
-    admins = bot.get_chat_member(chat_id, user_id).status in [
+    is_admin = bot.get_chat_member(chat_id, user_id).status in [
 
         "creator",
 
@@ -411,13 +447,13 @@ def close(update, context):
 
     ] or user_id in [OWNER_ID]
 
-    if admins:
+    if is_admin:
 
         delete_all_messages()
 
     else:
 
-        query.answer(text="Sorry, only Admins can close !", show_alert=True)
+        query.answer(text="Hahahaha, You Are Not An Admin!", show_alert=True)
 
 def pop_up_stats(update, context):
 
@@ -431,13 +467,13 @@ def bot_sys_stats():
 
     currentTime = get_readable_time(time() - botStartTime)
 
-    cpu = psutil.cpu_percent()
+    cpu = cpu_percent(interval=0.5)
 
-    mem = psutil.virtual_memory().percent
+    memory = virtual_memory()
 
-    disk = psutil.disk_usage("/").percent
+    mem_p = memory.percent
 
-    total, used, free = shutil.disk_usage(".")
+    total, used, free, disk = disk_usage('/')
 
     total = get_readable_file_size(total)
 
@@ -445,33 +481,76 @@ def bot_sys_stats():
 
     free = get_readable_file_size(free)
 
-    recv = get_readable_file_size(psutil.net_io_counters().bytes_recv)
+    sent = get_readable_file_size(net_io_counters().bytes_sent)
 
-    sent = get_readable_file_size(psutil.net_io_counters().bytes_sent)
+    recv = get_readable_file_size(net_io_counters().bytes_recv)
 
-    stats = "Bot Statistics"
+    num_active = 0
 
-    stats += f"""
+    num_upload = 0
 
-Bot Uptime: {currentTime}
+    num_split = 0
 
-T-DN: {recv} | T-UP: {sent}
+    num_extract = 0
 
-CPU: {cpu}% | RAM: {mem}%
+    num_archi = 0
 
-Disk: {total} | Free: {free}
+    tasks = len(download_dict)
 
-Used: {used} [{disk}%]
+    for stats in list(download_dict.values()):
 
-Made with ❤️ by Dawn
+       if stats.status() == MirrorStatus.STATUS_DOWNLOADING:
+
+                num_active += 1
+
+       if stats.status() == MirrorStatus.STATUS_UPLOADING:
+
+                num_upload += 1
+
+       if stats.status() == MirrorStatus.STATUS_ARCHIVING:
+
+                num_archi += 1
+
+       if stats.status() == MirrorStatus.STATUS_EXTRACTING:
+
+                num_extract += 1
+
+       if stats.status() == MirrorStatus.STATUS_SPLITTING:
+
+                num_split += 1
+
+    stats = f"""
+
+BOT UPTIME: {currentTime}\n
+
+CPU : {cpu}% || RAM : {mem_p}%\n
+
+USED : {used} || FREE :{free}
+
+SENT : {sent} || RECV : {recv}\n
+
+ONGOING TASKS:
+
+DL: {num_active} || UP : {num_upload} || SPLIT : {num_split}
+
+ZIP : {num_archi} || UNZIP : {num_extract} || TOTAL : {tasks} 
 
 """
 
     return stats
 
-dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
+dispatcher.add_handler(
 
-dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
+    CallbackQueryHandler(pop_up_stats, pattern="^" + str(FOUR) + "$")
 
-dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
-    
+)
+
+dispatcher.add_handler(
+
+    CallbackQueryHandler(close, pattern="^" + str(TWO) + "$")
+
+)
+
+
+   
+
