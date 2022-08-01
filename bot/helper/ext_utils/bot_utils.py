@@ -392,9 +392,6 @@ Used: {used} [{disk}%]
 Only For You!
 """
     return stats
-dispatcher.add_handler(
-    CallbackQueryHandler(pop_up_stats, pattern="^" + str(FOUR) + "$")
-)
-dispatcher.add_handler(
-    CallbackQueryHandler(close, pattern="^" + str(TWO) + "$")
-)
+dispatcher.add_handler(CallbackQueryHandler(refresh, pattern="^" + str(ONE) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(close, pattern="^" + str(TWO) + "$"))
+dispatcher.add_handler(CallbackQueryHandler(pop_up_stats, pattern="^" + str(THREE) + "$"))
