@@ -195,14 +195,14 @@ class MirrorListener:
 
     def onUploadComplete(self, link: str, size, files, folders, typ, name: str):
         buttons = ButtonMaker()
-         # this is inspired by def mirror to get the link from message
-         mesg = self.message.text.split('\n')
-         message_args = mesg[0].split(' ', maxsplit=1)
-         reply_to = self.message.reply_to_message
-         if not self.isPrivate and INCOMPLETE_TASK_NOTIFIER and DB_URI is not None:
+        # this is inspired by def mirror to get the link from message
+        mesg = self.message.text.split('\n')
+        message_args = mesg[0].split(' ', maxsplit=1)
+        reply_to = self.message.reply_to_message
+        if not self.isPrivate and INCOMPLETE_TASK_NOTIFIER and DB_URI is not None:
             DbManger().rm_complete_task(self.message.link)
-         msg = f"<b>File Name: </b><code>{escape(name)}</code>\n<b>File Size: </b>{size}"
-         if self.isLeech:
+        msg = f"<b>Name: </b><code>{escape(name)}</code>\n\n<b>Size: </b>{size}"
+        if self.isLeech:
             if SOURCE_LINK is True:
                 try:
                     source_link = message_args[1]
@@ -243,17 +243,18 @@ class MirrorListener:
                 msg += f'\n<b>Corrupted Files: </b>{typ}'
             msg += f'\n<b>cc: </b>{self.tag}\n\n'
             if not files:
-                sendMessage(msg, self.bot, self.message)
+                uploadmsg = sendMessage(msg, self.bot, self.message)
             else:
                 fmsg = ''
                 for index, (link, name) in enumerate(files.items(), start=1):
                     fmsg += f"{index}. <a href='{link}'>{name}</a>\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
-                        sendMessage(msg + fmsg, self.bot, self.message)
+                        uploadmsg = sendMarkup(msg + fmsg, self.bot, self.message, InlineKeyboardMarkup(buttons.build_menu(2)))
                         sleep(1)
                         fmsg = ''
                 if fmsg != '':
-                    sendMessage(msg + fmsg, self.bot, self.message)
+                    uploadmsg = sendMarkup(msg + fmsg, self.bot, self.message, InlineKeyboardMarkup(buttons.build_menu(2)))
+                    Thread(target=auto_delete_upload_message, args=(bot, self.message, uploadmsg)).start()
         else:
             msg += f'\n\n<b>Type: </b>{typ}'
             if ospath.isdir(f'{DOWNLOAD_DIR}{self.uid}/{name}'):
@@ -261,23 +262,19 @@ class MirrorListener:
                 msg += f'\n<b>Files: </b>{files}'
             msg += f'\n\n<b>cc: </b>{self.tag}'
             buttons = ButtonMaker()
-            link = short_url(link)
-            buttons.buildbutton("Drive Link", link)
+            buttons.buildbutton("☁️ Drive Link", link)
             LOGGER.info(f'Done Uploading {name}')
             if INDEX_URL is not None:
                 url_path = rutils.quote(f'{name}')
                 share_url = f'{INDEX_URL}/{url_path}'
                 if ospath.isdir(f'{DOWNLOAD_DIR}/{self.uid}/{name}'):
                     share_url += '/'
-                    share_url = short_url(share_url)
-                    buttons.buildbutton("Index Link", share_url)
+                    buttons.buildbutton("⚡ Index Link", share_url)
                 else:
-                    share_url = short_url(share_url)
-                    buttons.buildbutton("Index Link", share_url)
+                    buttons.buildbutton("⚡ Index Link", share_url)
                     if VIEW_LINK:
                         share_urls = f'{INDEX_URL}/{url_path}?a=view'
-                        share_urls = short_url(share_urls)
-                        buttons.buildbutton("View Link", share_urls)
+                        buttons.buildbutton("🌐 View Link", share_urls)
             if BUTTON_FOUR_NAME is not None and BUTTON_FOUR_URL is not None:
                 buttons.buildbutton(f"{BUTTON_FOUR_NAME}", f"{BUTTON_FOUR_URL}")
             if BUTTON_FIVE_NAME is not None and BUTTON_FIVE_URL is not None:
@@ -321,15 +318,25 @@ class MirrorListener:
                     LOGGER.warning(e)
                     pass
             else:
-                pass    
-            sendMarkup(msg, self.bot, self.message, InlineKeyboardMarkup(buttons.build_menu(2)))
-            if self.isQbit and QB_SEED and not self.extract:
-                if self.isZip:
-                    try:
-                        osremove(f'{DOWNLOAD_DIR}{self.uid}/{name}')
-                    except:
-                        pass
-                return
+                pass
+            uploadmsg = sendMarkup(msg, self.bot, self.message, InlineKeyboardMarkup(buttons.build_menu(2)))
+            Thread(target=auto_delete_upload_message, args=(bot, self.message, uploadmsg)).start()
+            if MIRROR_LOGS:
+                try:
+                    for chatid in MIRROR_LOGS:
+                        bot.sendMessage(chat_id=chatid, text=msg,
+                                        reply_markup=InlineKeyboardMarkup(buttons.build_menu(2)),
+                                        parse_mode=ParseMode.HTML)
+                except Exception as e:
+                    LOGGER.warning(e)
+            if BOT_PM and self.message.chat.type != 'private':
+                try:
+                    bot.sendMessage(chat_id=self.user_id, text=msg,
+                                    reply_markup=InlineKeyboardMarkup(buttons.build_menu(2)),
+                                    parse_mode=ParseMode.HTML)
+                except Exception as e:
+                    LOGGER.warning(e)
+                    return
         clean_download(f'{DOWNLOAD_DIR}{self.uid}')
         with download_dict_lock:
             try:
@@ -340,7 +347,7 @@ class MirrorListener:
         if count == 0:
             self.clean()
         else:
-            update_all_messages() 
+            update_all_messages()
 
     def onUploadError(self, error):
         e_str = error.replace('<', '').replace('>', '')
