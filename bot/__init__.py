@@ -144,6 +144,11 @@ try:
 except:
     pass
 try:
+    SOURCE_LINK = getConfig('SOURCE_LINK')
+    SOURCE_LINK = SOURCE_LINK.lower() == 'true'
+except KeyError:
+    SOURCE_LINK = False  
+try:
     BOT_PM = getConfig('BOT_PM')
     BOT_PM = BOT_PM.lower() == 'true'
 except KeyError:
