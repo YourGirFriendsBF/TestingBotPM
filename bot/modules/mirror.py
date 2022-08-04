@@ -195,14 +195,14 @@ class MirrorListener:
 
     def onUploadComplete(self, link: str, size, files, folders, typ, name: str):
          buttons = ButtonMaker()
-        # this is inspired by def mirror to get the link from message
-        mesg = self.message.text.split('\n')
-        message_args = mesg[0].split(' ', maxsplit=1)
-        reply_to = self.message.reply_to_message
-        if not self.isPrivate and INCOMPLETE_TASK_NOTIFIER and DB_URI is not None:
+         # this is inspired by def mirror to get the link from message
+         mesg = self.message.text.split('\n')
+         message_args = mesg[0].split(' ', maxsplit=1)
+         reply_to = self.message.reply_to_message
+         if not self.isPrivate and INCOMPLETE_TASK_NOTIFIER and DB_URI is not None:
             DbManger().rm_complete_task(self.message.link)
-        msg = f"<b>File Name: </b><code>{escape(name)}</code>\n<b>File Size: </b>{size}"
-        if self.isLeech:
+         msg = f"<b>File Name: </b><code>{escape(name)}</code>\n<b>File Size: </b>{size}"
+         if self.isLeech:
             if SOURCE_LINK is True:
                 try:
                     source_link = message_args[1]
