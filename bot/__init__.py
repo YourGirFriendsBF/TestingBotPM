@@ -475,15 +475,14 @@ try:
     APPDRIVE_PASS = getConfig('APPDRIVE_PASS')
     if len(APPDRIVE_EMAIL) == 0 or len(APPDRIVE_PASS) == 0:
         raise KeyError
+except KeyError:
+    APPDRIVE_EMAIL = None
+    APPDRIVE_PASS = None
 try:
     BOT_PM = getConfig('BOT_PM')
     BOT_PM = BOT_PM.lower() == 'true'
 except KeyError:
-    BOT_PM = False        
-except KeyError:
-    APPDRIVE_EMAIL = None
-    APPDRIVE_PASS = None
-    
+    BOT_PM = False            
 try:
     HEROKU_API_KEY = getConfig('HEROKU_API_KEY')
     HEROKU_APP_NAME = getConfig('HEROKU_APP_NAME')
