@@ -156,4 +156,4 @@ def sendStatusMessage(msg, bot):
             message = sendMessage(progress, bot, msg)
         else:
             message = sendMarkup(progress, bot, msg, buttons)
-        status_reply_dict[msg.chat.id] = 
+        status_reply_dict[msg.chat.id] = message
