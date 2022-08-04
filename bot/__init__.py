@@ -149,6 +149,13 @@ try:
 except KeyError:
     BOT_PM = False
 try:
+    aid = getConfig('MIRROR_LOGS')
+    aid = aid.split(' ')
+    for _id in aid:
+        MIRROR_LOGS.add(int(_id))
+except:
+    pass    
+try:
     aid = getConfig('AUTHORIZED_CHATS')
     aid = aid.split()
     for _id in aid:
