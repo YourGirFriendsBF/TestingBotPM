@@ -135,6 +135,7 @@ AS_DOC_USERS = set()
 AS_MEDIA_USERS = set()
 EXTENSION_FILTER = set()
 LEECH_LOG = set()
+MIRROR_LOGS = set()
 try:
     aid = getConfig('LEECH_LOG')
     aid = aid.split(' ')
@@ -467,7 +468,11 @@ try:
     APPDRIVE_PASS = getConfig('APPDRIVE_PASS')
     if len(APPDRIVE_EMAIL) == 0 or len(APPDRIVE_PASS) == 0:
         raise KeyError
-        
+try:
+    BOT_PM = getConfig('BOT_PM')
+    BOT_PM = BOT_PM.lower() == 'true'
+except KeyError:
+    BOT_PM = False        
 except KeyError:
     APPDRIVE_EMAIL = None
     APPDRIVE_PASS = None
