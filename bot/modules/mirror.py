@@ -408,7 +408,7 @@ def _mirror(bot, message, isZip=False, extract=False, isQbit=False, isLeech=Fals
             message = sendMarkup(startwarn, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
             Thread(target=auto_delete_message, args=(bot, message, message)).start()
             return
-    if message.chat.type == 'private' and len(LEECH_LOG) == 0 and isLeech and MAX_LEECH_SIZE == 4194304000:
+    if message.chat.type == 'private' and len(LEECH_LOG) == 0 and isLeech and TG_SPLIT_SIZE == 4194304000:
         text = f"Leech Log is Empty you Can't use bot in PM,\nYou Can use <i>/{BotCommands.AddleechlogCommand} chat_id </i> to add leech log."
         sendMessage(text, bot, message)
         return
