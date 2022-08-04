@@ -194,7 +194,7 @@ class MirrorListener:
             DbManger().rm_complete_task(self.message.link)
 
     def onUploadComplete(self, link: str, size, files, folders, typ, name: str):
-         buttons = ButtonMaker()
+        buttons = ButtonMaker()
          # this is inspired by def mirror to get the link from message
          mesg = self.message.text.split('\n')
          message_args = mesg[0].split(' ', maxsplit=1)
@@ -340,7 +340,7 @@ class MirrorListener:
         if count == 0:
             self.clean()
         else:
-            update_all_messages()
+            update_all_messages() 
 
     def onUploadError(self, error):
         e_str = error.replace('<', '').replace('>', '')
